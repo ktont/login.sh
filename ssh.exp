@@ -89,9 +89,9 @@ expect {
   }
   -re "\[#$] $" {
     send "
-      su - bee\r
+      su - guest\r
       export LC_CTYPE=\r
-      cd /data/docker_workspace/ikuai_m1_builder/openwrt-sdk\r"
+      cd /data/aaa/bbb/ox-sdk\r"
   }
 }
 
