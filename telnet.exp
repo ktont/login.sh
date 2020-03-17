@@ -1,0 +1,51 @@
+set user [lindex $argv 0]
+set host [lindex $argv 1]
+set port [lindex $argv 2]
+set zmodem [lindex $argv 3]
+set passwords [lrange $argv 4 end]
+
+set timeout 30
+
+# puts $argv
+
+spawn telnet $host $port
+expect {
+  timeout {
+    puts "timeout!"
+    exit 1
+  }
+
+  -re "\[#$] $" {
+    # 登陆成功
+    # rz sz
+    if {$zmodem} {
+    	send "export LC_CTYPE=\r"
+    }
+  }
+
+  # telnet username
+  "login: " {
+    send "$user\r"
+    exp_continue
+  }
+
+  # ruijie switch 
+  "Username:" {
+    send "$user\r"
+    exp_continue
+  }
+
+  -re "\[Pp]assword:" {
+    if ![llength $passwords] { break }
+    send "[lindex $passwords 0]\r"
+    set passwords [lrange $passwords 1 end]
+    exp_continue
+  }
+
+  eof {
+    exit
+  }
+}
+
+interact
+

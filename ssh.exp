@@ -1,0 +1,99 @@
+set user [lindex $argv 0]
+set host [lindex $argv 1]
+set port [lindex $argv 2]
+set zmodem [lindex $argv 3]
+set passwords [lrange $argv 4 end]
+set idx 0
+
+set timeout 30
+
+# puts $argv
+# system "clear" # 隐藏密码 安全考虑
+# 如果此处可以发送 command+k 那就完美了. 其实无法清除历史，还是不安全。所以安全的方法就是再让用户写个脚本
+# 增加密码文件
+# TODO spawn expect 用户自定义过程
+
+while { true } {
+  if {$user == ""} {
+    spawn ssh -p $port $host
+  } else {
+    spawn ssh -p $port $user@$host
+  }
+  #puts "11111111111 $spawn_id"
+
+  expect {
+    timeout {
+      puts "timeout!"
+      exit 1
+    }
+
+    -re "\[#$] $" {
+      # 登陆成功
+      # rz sz
+      if {$zmodem} {
+        # 如何隐藏这句话。这句话是必须的吗
+        #可以隐藏
+        #send "stty -echo\r"
+        send "export LC_CTYPE=\r"
+        #send "stty echo\r"
+      }
+
+      break
+    }
+
+    Token: {
+      set timeout 600
+      expect_user -re "(.*)\n"
+      set timeout 10
+      send "$expect_out(buffer)\n"
+      exp_continue
+    }
+
+    "Host key verification failed." {
+      system "ssh-keygen -R $host"
+      puts "retry"
+      continue
+    }
+
+    "continue connecting (yes/no)?" {
+      send "yes\r"
+      exp_continue
+    }
+
+    -re "\[Pp]assword:" {
+      # TODO idx % 3
+      if { $idx >= [llength $passwords] } {
+        puts "\n\nall wrong\n"
+        exit 
+      }
+      send "[lindex $passwords $idx]\r"
+      incr idx
+      exp_continue
+    }
+
+    eof {
+      if {$idx > 0 && $idx < [llength $passwords]} {
+        continue
+      } else {
+        exit
+      }
+    }
+  }
+}
+
+send "sudo -s\r"
+expect {
+  -re "password for.*:|的密码：" {
+    send "[lindex $passwords $idx-1]\r"
+    exp_continue
+  }
+  -re "\[#$] $" {
+    send "
+      su - bee\r
+      export LC_CTYPE=\r
+      cd /data/docker_workspace/ikuai_m1_builder/openwrt-sdk\r"
+  }
+}
+
+interact
+
